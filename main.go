@@ -2,18 +2,9 @@ package main
 
 import (
 	"log"
-	"sync"
 
 	"github.com/go-co-op/gocron/v2"
 )
-
-type Secrets struct {
-	Husqvarna HusqvarnaKeys
-	Discord   DiscordKeys
-}
-
-var authData AuthResponse
-var once sync.Once
 
 var mowerActivity string
 

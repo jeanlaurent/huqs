@@ -8,8 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
+
+var authData AuthResponse
+var once sync.Once
 
 type HusqvarnaKeys struct {
 	ClientID     string

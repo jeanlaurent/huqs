@@ -37,7 +37,7 @@ jobs:
          tags: |
             type=ref,event=branch
             type=ref,event=tag
-            type=raw,value=latest,enable=${{ endsWith(GitHub.ref, 'master') }}
+            type=raw,value=latest,enable=${{ endsWith(GitHub.ref, 'main') }}
             
     - name: Building and pushing image
       uses: docker/build-push-action@v5

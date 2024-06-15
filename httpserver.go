@@ -18,53 +18,6 @@ import (
 	"github.com/labstack/echo/middleware"
 )
 
-// type responseCapture struct {
-// 	http.ResponseWriter
-// 	body bytes.Buffer
-// }
-
-// func (r *responseCapture) Write(b []byte) (int, error) {
-// 	return r.body.Write(b)
-// }
-
-// func templaterMiddleWare(next http.Handler, mustache *mustache.Template, pageVariables map[string]string) http.Handler {
-// 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-
-// 		if filepath.Ext(request.URL.Path) != ".html" || strings.HasSuffix(request.URL.Path, "/") {
-// 			log.Println(request.URL.Path, "not html")
-// 			next.ServeHTTP(writer, request)
-// 			return
-// 		}
-// 		log.Println(request.URL.Path, "html")
-// 		capture := &responseCapture{ResponseWriter: writer}
-
-// 		next.ServeHTTP(capture, request)
-
-// 		err := mustache.ParseBytes(capture.body.Bytes())
-// 		if err != nil {
-// 			http.Error(writer, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		buffer := &bytes.Buffer{}
-// 		err = mustache.Render(buffer, pageVariables)
-// 		if err != nil {
-// 			http.Error(writer, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-// 		log.Println("before", writer.Header())
-// 		bufferBytes := buffer.Bytes()
-// 		log.Println("Content-Length", len(bufferBytes))
-// 		writer.Header().Set("Content-Length", strconv.Itoa(len(bufferBytes)))
-// 		log.Println(writer.Header())
-// 		_, err = writer.Write(buffer.Bytes())
-// 		if err != nil {
-// 			log.Println(err)
-// 		}
-
-// 	})
-// }
-
 func listingMowerHandler(appSecrets Secrets) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		authData := Authenticate(appSecrets.Husqvarna)
@@ -262,14 +215,14 @@ func startHttpServer(appSecrets Secrets) {
 
 	// I used to be serving file with
 	// e.Static("/", findStaticPath())
+
 	// This is a pretty dirty but working implementation
 	// Of serving html files with mustache templating
-	mustache := mustache.New()
 	pageVariables := map[string]string{
 		"GOOGLEMAPAPIKEY": appSecrets.GoogleMapApiKey,
 		"hello":           "Hello World!",
 	}
-	mustacheMe(e, "/", findStaticPath(), mustache, pageVariables)
+	mustacheMe(e, "/", findStaticPath(), mustache.New(), pageVariables)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -281,7 +234,4 @@ func startHttpServer(appSecrets Secrets) {
 		log.Fatal(listenErr)
 	}
 
-	// router.PathPrefix("/").Handler(templaterMiddleWare(http.FileServer(http.Dir(staticPath)), mustache, pageVariables))
-
-	// http.Handle("/", router)
 }

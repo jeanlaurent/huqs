@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,15 +10,62 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
+	"github.com/alexkappa/mustache"
 	"github.com/gorilla/mux"
 )
 
-func startHttpServer(appSecrets Secrets) {
-	r := mux.NewRouter()
+type responseCapture struct {
+	http.ResponseWriter
+	body bytes.Buffer
+}
 
-	r.HandleFunc("/api/mowers", func(w http.ResponseWriter, r *http.Request) {
+func (r *responseCapture) Write(b []byte) (int, error) {
+	return r.body.Write(b)
+}
+
+func templaterMiddleWare(next http.Handler, mustache *mustache.Template, pageVariables map[string]string) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		// exit this function if the content is not html based on the file extension
+		if filepath.Ext(request.URL.Path) != ".html" || strings.HasSuffix(request.URL.Path, "/") {
+			log.Println(request.URL.Path, "not html")
+			next.ServeHTTP(writer, request)
+			return
+		}
+		log.Println(request.URL.Path, "html")
+		capture := &responseCapture{ResponseWriter: writer}
+
+		next.ServeHTTP(capture, request)
+
+		err := mustache.ParseBytes(capture.body.Bytes())
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		buffer := &bytes.Buffer{}
+		err = mustache.Render(buffer, pageVariables)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Println("before", writer.Header())
+		bufferBytes := buffer.Bytes()
+		log.Println("Content-Length", len(bufferBytes))
+		writer.Header().Set("Content-Length", strconv.Itoa(len(bufferBytes)))
+		log.Println(writer.Header())
+		_, err = writer.Write(buffer.Bytes())
+		if err != nil {
+			log.Println(err)
+		}
+
+	})
+}
+
+func listingMowerHandler(appSecrets Secrets) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		authData := Authenticate(appSecrets.Husqvarna)
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", "https://api.amc.husqvarna.dev/v1/mowers", nil)
@@ -47,9 +95,11 @@ func startHttpServer(appSecrets Secrets) {
 		}
 
 		json.NewEncoder(w).Encode(mowersData)
-	})
+	}
+}
 
-	r.HandleFunc("/api/mower/{mowerID}/{action}", func(w http.ResponseWriter, r *http.Request) {
+func mowerActionHandler(appSecrets Secrets) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		mowerID := vars["mowerID"]
 		action := vars["action"]
@@ -103,9 +153,11 @@ func startHttpServer(appSecrets Secrets) {
 		}
 
 		fmt.Fprint(w, string(body))
-	})
+	}
+}
 
-	r.HandleFunc("/api/mower/{mowerID}", func(w http.ResponseWriter, r *http.Request) {
+func mowerDetailHandler(appSecrets Secrets) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		mowerID := vars["mowerID"]
 
@@ -132,14 +184,29 @@ func startHttpServer(appSecrets Secrets) {
 		}
 
 		fmt.Fprint(w, string(body))
-	})
+	}
+}
+
+func startHttpServer(appSecrets Secrets) {
+	router := mux.NewRouter()
+
+	router.HandleFunc("/api/mowers", listingMowerHandler(appSecrets))
+	router.HandleFunc("/api/mower/{mowerID}/{action}", mowerActionHandler(appSecrets))
+	router.HandleFunc("/api/mower/{mowerID}", mowerDetailHandler(appSecrets))
 
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
 	staticPath := filepath.Join(basepath, "static")
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir(staticPath)))
 
-	http.Handle("/", r)
+	mustache := mustache.New()
+	pageVariables := map[string]string{
+		"GOOGLEMAP_API_KEY": appSecrets.GoogleMapApiKey,
+		"hello":             "Hello World!",
+	}
+
+	router.PathPrefix("/").Handler(templaterMiddleWare(http.FileServer(http.Dir(staticPath)), mustache, pageVariables))
+
+	http.Handle("/", router)
 
 	port := os.Getenv("PORT")
 	if port == "" {

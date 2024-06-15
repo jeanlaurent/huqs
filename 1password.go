@@ -7,8 +7,9 @@ import (
 )
 
 type Secrets struct {
-	Husqvarna HusqvarnaKeys
-	Discord   DiscordKeys
+	Husqvarna       HusqvarnaKeys
+	Discord         DiscordKeys
+	GoogleMapApiKey string
 }
 
 func retrieveSecrets() Secrets {
@@ -43,6 +44,12 @@ func retrieveSecrets() Secrets {
 		log.Fatal(err)
 	}
 	secrets.Husqvarna.ClientSecret = item.GetValue("identifiant")
+	item, err = client.GetItem("GOOGLEMAP-API-KEY", "HomeLab")
+	if err != nil {
+		log.Println("Can't get GOOGLEMAP-API-KEY from 1Password")
+		log.Fatal(err)
+	}
+	secrets.GoogleMapApiKey = item.GetValue("identifiant")
 	log.Println("Successfully retrieved secrets from 1Password")
 	return secrets
 }

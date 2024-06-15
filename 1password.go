@@ -20,22 +20,26 @@ func retrieveSecrets() Secrets {
 	}
 	item, err := client.GetItem("DISCORD-WEBHOOK-ID", "HomeLab")
 	if err != nil {
+		log.Println("Can't get DISCORD-WEBHOOK-ID from 1Password")
 		log.Fatal(err)
 	}
 	secrets.Discord.WebhookID = item.GetValue("identifiant")
 	item, err = client.GetItem("DISCORD-TOKEN", "HomeLab")
 	if err != nil {
+		log.Println("Can't get DISCORD-TOKEN from 1Password")
 		log.Fatal(err)
 	}
 	secrets.Discord.WebhookToken = item.GetValue("identifiant")
 	item, err = client.GetItem("HUSQVARNA-CLIENT-ID", "HomeLab")
 	if err != nil {
+		log.Println("Can't get HUSQVARNA-CLIENT-ID from 1Password")
 		log.Fatal(err)
 	}
 	secrets.Husqvarna.ClientID = item.GetValue("identifiant")
 	secrets.Husqvarna.APIKey = secrets.Husqvarna.ClientID
 	item, err = client.GetItem("HUSQVARNA-CLIENT-SECRET", "HomeLab")
 	if err != nil {
+		log.Println("Can't get HUSQVARNA-CLIENT-SECRET from 1Password")
 		log.Fatal(err)
 	}
 	secrets.Husqvarna.ClientSecret = item.GetValue("identifiant")

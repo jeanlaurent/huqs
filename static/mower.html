@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mower</title>
+        <style>
+            #mower {
+                width:150px;
+            }
+            #container {
+                display: flex;
+            }
+            #data {
+                margin-top: 20px;
+                margin-left: 20px;
+                margin-right: 20px;
+            }
+            #button {
+                display: flex;
+                flex-direction: column;
+            }
+            #button > button {
+                margin-top: 10px;
+            }
+            #map {
+                height: 600px;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <img id="mower" src="405x.jpg"/>
+            <div id="data">
+                <div id="mowerModel"></div>
+                <div id="mowerConnected"></div>
+                <div id="mowerConnectedTS"></div>
+                <div id="mowerNextPlannedTime"></div>
+                <div id="batteryLevel"></div>
+                <div id="activity"></div>    
+            </div>
+            <div id="button">
+                <button id="park">Park</button>
+                <button id="start">Start</button>
+                <button id="pause">Pause</button>
+                <button id="parkschedule">Park Schedule</button>    
+            </div>
+        </div>
+        <div id="map"></div>
+        <script>
+            var activityDescriptions = {
+                'UNKNOWN': 'Inconnu.',
+                'NOT_APPLICABLE': 'Non applicable.',
+                'MOWING': 'En train de tondre.',
+                'GOING_HOME': 'Rentre à la station de charge.',
+                'CHARGING': 'En train de charger.',
+                'LEAVING': 'Quitte actuellement la station de charge et se dirige vers un point de départ.',
+                'PARKED_IN_CS': 'Garée dans la station de charge.',
+                'STOPPED_IN_GARDEN': 'Est arrêtée dans le jardin.'
+            };
+            function timeSince(date) {
+
+                var seconds = Math.floor((new Date() - date) / 1000);
+
+                var interval = seconds / 31536000;
+                if (interval > 1) {
+                    return Math.floor(interval) + " ans";
+                }
+                interval = seconds / 2592000;
+                if (interval > 1) {
+                    return Math.floor(interval) + " mois";
+                }
+                interval = seconds / 604800;
+                if (interval > 1) {
+                    return Math.floor(interval) + " semaines";
+                }
+                interval = seconds / 86400;
+                if (interval > 1) {
+                    return Math.floor(interval) + " jours";
+                }
+                interval = seconds / 3600;
+                if (interval > 1) {
+                    return Math.floor(interval) + " heures";
+                }
+                interval = seconds / 60;
+                if (interval > 1) {
+                    return Math.floor(interval) + " minutes";
+                }
+                return Math.floor(seconds) + " secondes";
+            }
+
+            function timeUntil(date) {
+                var seconds = Math.floor((date - new Date()) / 1000);
+
+                var interval = seconds / 31536000;
+
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " ans à " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                interval = seconds / 2592000;
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " mois à " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                interval = seconds / 604800;
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " semaines à " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                interval = seconds / 86400;
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " jours à " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                if (interval > 0.5) {
+                    return "demain à " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+                interval = seconds / 3600;
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " heures";
+                }
+                interval = seconds / 60;
+                if (interval > 1) {
+                    return "dans " + Math.floor(interval) + " minutes";
+                }
+                return "dans quelques secondes";
+            }
+
+            function convertUTCtoLocal(timestamp) {
+                return new Date(timestamp.getTime() + timestamp.getTimezoneOffset() * 60000);
+            }
+
+            fetch('/api/mower/edc219bc-a9c1-4b75-9a22-7bb6204cc264')
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data)
+                    document.getElementById('mowerModel').textContent = 'Modele: ' + data.data.attributes.system.model;
+                    document.getElementById('mowerConnected').textContent = 'Connectee: ' + data.data.attributes.metadata.connected + " (il y a " + timeSince(data.data.attributes.metadata.statusTimestamp) + ")";
+                    document.getElementById('batteryLevel').textContent = 'Niveau de Batterie: ' + data.data.attributes.battery.batteryPercent + '%';
+                    document.getElementById('activity').textContent = activityDescriptions[data.data.attributes.mower.activity];
+                    document.getElementById('mowerNextPlannedTime').textContent = "Prochaine tonte: " + timeUntil(convertUTCtoLocal(new Date(data.data.attributes.planner.nextStartTimestamp)));
+                    
+                    // Initialize the map
+                    var map = new google.maps.Map(document.getElementById('map'), {
+                        zoom: 21,
+                        center: { lat: data.data.attributes.positions[0].latitude, lng: data.data.attributes.positions[0].longitude },
+                        mapTypeId: 'satellite',
+                        mapId: "AutoMowerMap-6M13xPmZUc"
+                    });
+
+                    // Add a marker for the mower's position
+                    var marker = new google.maps.Marker({
+                        map: map,
+                        position: { lat: data.data.attributes.positions[0].latitude, lng: data.data.attributes.positions[0].longitude },
+                        icon: 'mower.png'
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        </script>
+        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCemI02qUv4d87FsERuajDWK6M13xPmZUc"></script>
+    </body>
+    </html>

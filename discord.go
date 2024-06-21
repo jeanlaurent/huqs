@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/DisgoOrg/disgohook"
 )
 
@@ -11,13 +9,14 @@ type DiscordKeys struct {
 	WebhookToken string
 }
 
-func sendDiscordMessage(content string, keys DiscordKeys) {
+func sendDiscordMessage(content string, keys DiscordKeys) error {
 	webhook, err := disgohook.NewWebhookClientByToken(nil, nil, keys.WebhookID+"/"+keys.WebhookToken)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	_, err = webhook.SendContent(content)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -139,7 +140,7 @@ func activityMessage(activity string) string {
 	return activityDescriptions[activity]
 }
 
-func huqsvarnaAuthenticate(keys HusqvarnaKeys) AuthResponse {
+func huqsvarnaAuthenticate(keys HusqvarnaKeys) (AuthResponse, error) {
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	data.Set("client_id", keys.ClientID)
@@ -148,19 +149,19 @@ func huqsvarnaAuthenticate(keys HusqvarnaKeys) AuthResponse {
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", "https://api.authentication.husqvarnagroup.dev/v1/oauth2/token", strings.NewReader(data.Encode()))
 	if err != nil {
-		log.Fatal(err)
+		return AuthResponse{}, err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return AuthResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return AuthResponse{}, err
 	}
 
 	var authData AuthResponse
@@ -169,22 +170,27 @@ func huqsvarnaAuthenticate(keys HusqvarnaKeys) AuthResponse {
 		log.Fatal(err)
 	}
 
-	return authData
+	return authData, nil
 }
 
 func Authenticate(keys HusqvarnaKeys) AuthResponse {
 	once.Do(func() {
-		authData = huqsvarnaAuthenticate(keys)
+		var err error
+		authData, err = huqsvarnaAuthenticate(keys)
+		if err != nil {
+			log.Fatal(err) // We crash here if we can't authenticate
+		}
 	})
 	return authData
 }
 
-func checkMowerStatus(appSecrets Secrets) {
+func checkMowerStatus(appSecrets Secrets) error {
 	authData := Authenticate(appSecrets.Husqvarna)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://api.amc.husqvarna.dev/v1/mowers", nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err) // I'm not sure how error handling works here, so rather log this here, Ideally that should be handled in the calling function.
+		return err
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authData.AccessToken))
@@ -193,29 +199,36 @@ func checkMowerStatus(appSecrets Secrets) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return err
 	}
 
 	var mowersData MowersResponse
 	err = json.Unmarshal(body, &mowersData)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return err
 	}
 	if len(mowersData.Data) == 0 {
-		fmt.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
-		return
+		log.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
+		return errors.New("can't get activity as I Could not get mower data")
 	}
 	newActivity := mowersData.Data[0].Attributes.Mower.Activity
-	fmt.Println(time.Now().Format("15:04:05"), "Comparing activity: ", mowerActivity, " vs ", newActivity)
+	log.Println(time.Now().Format("15:04:05"), "Comparing activity: ", mowerActivity, " vs ", newActivity)
 	if mowerActivity != newActivity {
-		sendDiscordMessage(activityMessage(newActivity), appSecrets.Discord)
+		err = sendDiscordMessage(activityMessage(newActivity), appSecrets.Discord)
+		if err != nil {
+			log.Println(err)
+			// We don't return here, we just log the error and continue
+		}
 		mowerActivity = newActivity
 	}
-
+	return nil
 }

@@ -18,14 +18,17 @@ func startCron(appSecrets Secrets) {
 		gocron.NewTask(checkMowerStatus, appSecrets),
 	)
 	if err != nil {
-		panic(err)
+		panic(err) // really? panic?
 	}
 
 	scheduler.Start()
 }
 
 func main() {
-	appSecrets := retrieveSecrets()
+	appSecrets, err := retrieveSecrets()
+	if err != nil {
+		log.Fatal(err) // we crash here if we can't retrieve secrets
+	}
 
 	startCron(appSecrets)
 

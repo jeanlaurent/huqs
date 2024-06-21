@@ -65,23 +65,26 @@ func mowerActionHandler(appSecrets Secrets) echo.HandlerFunc {
 		}
 
 		var payload io.Reader
-
+		var err error
 		switch action {
 		case "start":
 			payload = strings.NewReader(fmt.Sprintf(`{"data":{"type":"Start","attributes":{"duration":%s}}}`, duration))
-			sendDiscordMessage("Je commence à tondre pour "+duration+" minutes", appSecrets.Discord)
+			err = sendDiscordMessage("Je commence à tondre pour "+duration+" minutes", appSecrets.Discord)
 		case "park":
 			payload = strings.NewReader(fmt.Sprintf(`{"data":{"type":"Park","attributes":{"duration":%s}}}`, duration))
-			sendDiscordMessage("Je vais à la station de charge pour "+duration+" minutes", appSecrets.Discord)
+			err = sendDiscordMessage("Je vais à la station de charge pour "+duration+" minutes", appSecrets.Discord)
 		case "pause":
 			payload = strings.NewReader(`{"data":{"type":"Pause"}}`)
-			sendDiscordMessage("Je fais une pause", appSecrets.Discord)
+			err = sendDiscordMessage("Je fais une pause", appSecrets.Discord)
 		case "parkschedule":
 			payload = strings.NewReader(`{"data":{"type":"ParkUntilNextSchedule"}}`)
-			sendDiscordMessage("Je vais me recharger jusqu'à la prochaine tonte", appSecrets.Discord)
+			err = sendDiscordMessage("Je vais me recharger jusqu'à la prochaine tonte", appSecrets.Discord)
 		case "resumeschedule":
 			payload = strings.NewReader(`{"data":{"type":"ResumeSchedule"}}`)
-			sendDiscordMessage("Je reprends mon planning de tonte", appSecrets.Discord)
+			err = sendDiscordMessage("Je reprends mon planning de tonte", appSecrets.Discord)
+		}
+		if err != nil {
+			return err
 		}
 
 		authData := Authenticate(appSecrets.Husqvarna)
@@ -228,10 +231,10 @@ func startHttpServer(appSecrets Secrets) {
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Println("Let's go! on port " + port + " 🚀")
+	log.Println("Let's go! on port " + port + " 🚀")
 	listenErr := e.Start(":" + port)
 	if listenErr != nil {
-		log.Fatal(listenErr)
+		log.Fatal(listenErr) // we purposely crash the app here
 	}
 
 }

@@ -207,6 +207,10 @@ func checkMowerStatus(appSecrets Secrets) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if len(mowersData.Data) == 0 {
+		fmt.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
+		return
+	}
 	newActivity := mowersData.Data[0].Attributes.Mower.Activity
 	fmt.Println(time.Now().Format("15:04:05"), "Comparing activity: ", mowerActivity, " vs ", newActivity)
 	if mowerActivity != newActivity {

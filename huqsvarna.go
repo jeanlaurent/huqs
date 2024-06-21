@@ -184,36 +184,42 @@ func Authenticate(keys HusqvarnaKeys) AuthResponse {
 	return authData
 }
 
-func checkMowerStatus(appSecrets Secrets) error {
-	authData := Authenticate(appSecrets.Husqvarna)
+func getMowerStatus(husqsKeys HusqvarnaKeys) (MowersResponse, error) {
+	authData := Authenticate(husqsKeys)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://api.amc.husqvarna.dev/v1/mowers", nil)
 	if err != nil {
-		log.Println(err) // I'm not sure how error handling works here, so rather log this here, Ideally that should be handled in the calling function.
-		return err
+		return MowersResponse{}, err
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authData.AccessToken))
-	req.Header.Add("X-Api-Key", appSecrets.Husqvarna.APIKey)
+	req.Header.Add("X-Api-Key", husqsKeys.APIKey)
 	req.Header.Add("Authorization-Provider", "husqvarna")
 
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Println(err)
-		return err
+		return MowersResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
-		return err
+		return MowersResponse{}, err
 	}
 
 	var mowersData MowersResponse
 	err = json.Unmarshal(body, &mowersData)
 	if err != nil {
-		log.Println(err)
+		return MowersResponse{}, err
+	}
+	return mowersData, nil
+}
+
+func checkMowerStatus(appSecrets Secrets, queue *MessageQueue) error {
+	mowersData, err := getMowerStatus(appSecrets.Husqvarna)
+	if err != nil {
+		log.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
 		return err
 	}
 	if len(mowersData.Data) == 0 {
@@ -222,6 +228,7 @@ func checkMowerStatus(appSecrets Secrets) error {
 	}
 	newActivity := mowersData.Data[0].Attributes.Mower.Activity
 	log.Println(time.Now().Format("15:04:05"), "Comparing activity: ", mowerActivity, " vs ", newActivity)
+	queue.AddMessage(activityMessage(mowerActivity) + ">" + activityMessage(newActivity))
 	if mowerActivity != newActivity {
 		err = sendDiscordMessage(activityMessage(newActivity), appSecrets.Discord)
 		if err != nil {

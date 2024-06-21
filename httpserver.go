@@ -206,6 +206,14 @@ func mustacheMe(i *echo.Echo, prefix, root string, mustache *mustache.Template, 
 	return i.GET(prefix+"/*", h)
 }
 
+func listLastMessages() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		messages := queue.GetLast100Messages()
+		c.JSON(http.StatusOK, messages)
+		return nil
+	}
+}
+
 func startHttpServer(appSecrets Secrets) {
 	e := echo.New()
 
@@ -215,6 +223,7 @@ func startHttpServer(appSecrets Secrets) {
 	e.GET("/api/mowers", listingMowerHandler(appSecrets))
 	e.GET("/api/mower/:mowerID/:action", mowerActionHandler(appSecrets))
 	e.GET("/api/mower/:mowerID", mowerDetailHandler(appSecrets))
+	e.GET("/api/messages", listLastMessages())
 
 	// I used to be serving file with
 	// e.Static("/", findStaticPath())

@@ -14,7 +14,8 @@ import (
 )
 
 var authData AuthResponse
-var once sync.Once
+var authDataMutex sync.Mutex
+var lastAuthTime time.Time
 
 type HusqvarnaKeys struct {
 	ClientID     string
@@ -174,14 +175,21 @@ func huqsvarnaAuthenticate(keys HusqvarnaKeys) (AuthResponse, error) {
 }
 
 func Authenticate(keys HusqvarnaKeys) AuthResponse {
-	once.Do(func() {
+	authDataMutex.Lock()
+	defer authDataMutex.Unlock()
+
+	// if authData is empty or if the token has expired, re-authenticate
+	if authData.AccessToken == "" || time.Since(lastAuthTime).Seconds() > float64(authData.ExpiresIn-300) {
 		var err error
 		authData, err = huqsvarnaAuthenticate(keys)
 		if err != nil {
-			log.Fatal(err) // We crash here if we can't authenticate
+			log.Fatal(err) // crash here for now. We can handle this more gracefully later
 		}
-	})
+		lastAuthTime = time.Now()
+	}
+
 	return authData
+
 }
 
 func getMowerStatus(husqsKeys HusqvarnaKeys) (MowersResponse, error) {

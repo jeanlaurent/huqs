@@ -160,6 +160,11 @@ func huqsvarnaAuthenticate(keys HusqvarnaKeys) (AuthResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	log.Println("Auth response status: ", resp.Status)
+	if resp.StatusCode != 200 {
+		log.Println("Authentication likely failed ", resp.Status)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return AuthResponse{}, err
@@ -180,12 +185,21 @@ func Authenticate(keys HusqvarnaKeys) AuthResponse {
 
 	// if authData is empty or if the token has expired, re-authenticate
 	if authData.AccessToken == "" || time.Since(lastAuthTime).Seconds() > float64(authData.ExpiresIn-300) {
+		if authData.AccessToken == "" {
+			log.Println("Authenticating...")
+		} else {
+			log.Println("Re-authenticating...")
+		}
+
 		var err error
 		authData, err = huqsvarnaAuthenticate(keys)
 		if err != nil {
 			log.Fatal(err) // crash here for now. We can handle this more gracefully later
 		}
 		lastAuthTime = time.Now()
+
+	} else {
+		log.Println("Reusing token, last Authenticated at", time.Since(lastAuthTime).Seconds(), " expire in ", authData.ExpiresIn-300, "seconds")
 	}
 
 	return authData

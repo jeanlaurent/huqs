@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/go-co-op/gocron/v2"
 )
 
@@ -21,6 +23,7 @@ func startCron(appSecrets Secrets) error {
 	if err != nil {
 		return err
 	}
+	log.Println("Cron starting... ")
 
 	scheduler.Start()
 

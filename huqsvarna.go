@@ -249,15 +249,15 @@ func getMowerStatus(husqsKeys HusqvarnaKeys) (MowersResponse, error) {
 func checkMowerStatus(appSecrets Secrets, queue *MessageQueue) error {
 	mowersData, err := getMowerStatus(appSecrets.Husqvarna)
 	if err != nil {
-		log.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
+		log.Println("Can't get activity as I Could not get mower data", err)
 		return err
 	}
 	if len(mowersData.Data) == 0 {
-		log.Println(time.Now().Format("15:04:05"), "Can't get activity as I Could not get mower data", mowersData)
+		log.Println("Can't get activity as I Could not get mower data", mowersData)
 		return errors.New("can't get activity as I Could not get mower data")
 	}
 	newActivity := mowersData.Data[0].Attributes.Mower.Activity
-	log.Println(time.Now().Format("15:04:05"), "Comparing activity: ", mowerActivity, " vs ", newActivity)
+	log.Println("Comparing activity: ", mowerActivity, " vs ", newActivity)
 	queue.AddMessage(activityMessage(mowerActivity) + ">" + activityMessage(newActivity))
 	if mowerActivity != newActivity {
 		err = sendDiscordMessage(activityMessage(newActivity), appSecrets.Discord)

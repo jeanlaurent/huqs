@@ -225,9 +225,17 @@ func getMowerStatus(husqsKeys HusqvarnaKeys) (MowersResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	log.Println("Mower status response status: ", resp.Status)
+	if resp.StatusCode != 200 {
+		log.Println("Mower status likely failed ", resp.StatusCode)
+		log.Println("Headers", resp.Header)
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return MowersResponse{}, err
+	}
+	if resp.StatusCode != 200 {
+		log.Println("Logging response body", body)
 	}
 
 	var mowersData MowersResponse

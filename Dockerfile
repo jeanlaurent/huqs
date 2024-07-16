@@ -1,4 +1,4 @@
-FROM golang:1.22.4-alpine3.20 as builder
+FROM golang:1.22.5-alpine3.20 as builder
 COPY . /app
 WORKDIR /app
 RUN go build -o /app/huqs

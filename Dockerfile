@@ -3,7 +3,7 @@ COPY . /app
 WORKDIR /app
 RUN go build -o /app/huqs
 
-FROM alpine:3.20
+FROM alpine:3.20.1
 RUN adduser -D appuser
 USER appuser
 COPY ./static /app/static

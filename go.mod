@@ -1,6 +1,6 @@
 module morlhon.net/automower
 
-go 1.22.0
+go 1.23.0
 
 require (
 	github.com/1Password/connect-sdk-go v1.5.3

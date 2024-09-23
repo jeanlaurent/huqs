@@ -1,11 +1,9 @@
-FROM golang:1.22.6-alpine3.21 AS builder
+FROM golang:1.22.6-alpine3.20 AS builder
 COPY . /app
 WORKDIR /app
 RUN go build -o /app/huqs
 
-FROM alpine:3.21
-# Fix openssl version for alpine 3.21
-RUN apk --no-cache upgrade openssl && apk add openssl=3.3.2-r0
+FROM alpine:3.20.3
 
 RUN adduser -D appuser
 USER appuser

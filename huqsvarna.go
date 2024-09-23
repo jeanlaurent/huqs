@@ -129,7 +129,7 @@ type MowersResponse struct {
 func activityMessage(activity string) string {
 	activityDescriptions := map[string]string{
 		"UNKNOWN":           "Inconnu.",
-		"NOT_APPLICABLE":    "Non applicable.",
+		"NOT_APPLICABLE":    "Je me suis planté.",
 		"MOWING":            "En train de tondre.",
 		"GOING_HOME":        "Rentre à la station de charge.",
 		"CHARGING":          "En train de charger.",
@@ -261,6 +261,9 @@ func checkMowerStatus(appSecrets Secrets, queue *MessageQueue) error {
 	queue.AddMessage(activityMessage(mowerActivity) + ">" + activityMessage(newActivity))
 	if mowerActivity != newActivity {
 		err = sendDiscordMessage(activityMessage(newActivity), appSecrets.Discord)
+		if newActivity == "NOT_APPLICABLE" {
+			log.Println("Logging NotApplicable activity", mowersData.Data[0])
+		}
 		if err != nil {
 			log.Println(err)
 			// We don't return here, we just log the error and continue

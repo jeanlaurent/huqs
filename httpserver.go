@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -20,37 +19,11 @@ import (
 
 func listingMowerHandler(appSecrets Secrets) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		authData := Authenticate(appSecrets.Husqvarna)
-
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", "https://api.amc.husqvarna.dev/v1/mowers", nil)
+		mowersData, err := getMowerStatus(appSecrets.Husqvarna)
 		if err != nil {
 			return err
 		}
-
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authData.AccessToken))
-		req.Header.Add("X-Api-Key", appSecrets.Husqvarna.APIKey)
-		req.Header.Add("Authorization-Provider", "husqvarna")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-
-		var mowersData MowersResponse
-		err = json.Unmarshal(body, &mowersData)
-		if err != nil {
-			return err
-		}
-
-		c.JSON(http.StatusOK, mowersData)
-		return nil
+		return c.JSON(http.StatusOK, mowersData)
 	}
 }
 
@@ -109,8 +82,7 @@ func mowerActionHandler(appSecrets Secrets) echo.HandlerFunc {
 		if err != nil {
 			return err
 		}
-		c.HTML(http.StatusOK, string(body))
-		return nil
+		return c.HTML(http.StatusOK, string(body))
 	}
 }
 
@@ -140,8 +112,7 @@ func mowerDetailHandler(appSecrets Secrets) echo.HandlerFunc {
 			return err
 		}
 
-		c.HTML(http.StatusOK, string(body))
-		return nil
+		return c.HTML(http.StatusOK, string(body))
 	}
 }
 
@@ -158,10 +129,12 @@ func findFileToServe(file string) (string, error) {
 	}
 	defer f.Close()
 
-	fi, _ := f.Stat()
+	fi, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
 	if fi.IsDir() {
 		file = filepath.Join(file, "index.html")
-		return file, nil
 	}
 	return file, nil
 }
@@ -195,9 +168,8 @@ func mustacheMe(i *echo.Echo, prefix, root string, mustache *mustache.Template, 
 				return err
 			}
 			return c.HTML(http.StatusOK, content)
-		} else {
-			return c.File(name)
 		}
+		return c.File(name)
 	}
 	i.GET(prefix, h)
 	if prefix == "/" {
@@ -206,12 +178,8 @@ func mustacheMe(i *echo.Echo, prefix, root string, mustache *mustache.Template, 
 	return i.GET(prefix+"/*", h)
 }
 
-func listLastMessages() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		messages := queue.GetLast100Messages()
-		c.JSON(http.StatusOK, messages)
-		return nil
-	}
+func listLastMessages(c echo.Context) error {
+	return c.JSON(http.StatusOK, queue.GetLast100Messages())
 }
 
 func startHttpServer(appSecrets Secrets) {
@@ -223,7 +191,7 @@ func startHttpServer(appSecrets Secrets) {
 	e.GET("/api/mowers", listingMowerHandler(appSecrets))
 	e.GET("/api/mower/:mowerID/:action", mowerActionHandler(appSecrets))
 	e.GET("/api/mower/:mowerID", mowerDetailHandler(appSecrets))
-	e.GET("/api/messages", listLastMessages())
+	e.GET("/api/messages", listLastMessages)
 
 	// I used to be serving file with
 	// e.Static("/", findStaticPath())

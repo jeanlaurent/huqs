@@ -17,7 +17,7 @@ func startCron(appSecrets Secrets) error {
 		return err
 	}
 	_, err = scheduler.NewJob(
-		gocron.CronJob("*/1 * * * *", false),
+		gocron.CronJob("* * * * *", false),
 		gocron.NewTask(checkMowerStatus, appSecrets, queue),
 	)
 	if err != nil {

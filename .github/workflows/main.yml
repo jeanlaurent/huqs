@@ -19,14 +19,6 @@ jobs:
       with:
           username: jeanlaurent
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
-    - name: Set up Docker Build Cloud
-      uses: docker/setup-buildx-action@v3
-      with:
-        version: "lab:latest"
-        driver: cloud
-        endpoint: "docker/platform-experience"
-        install: true
 
     - name: Creating Docker Image Labels
       id: meta

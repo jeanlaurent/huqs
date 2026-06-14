@@ -15,8 +15,5 @@ func sendDiscordMessage(content string, keys DiscordKeys) error {
 		return err
 	}
 	_, err = webhook.SendContent(content)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

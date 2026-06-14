@@ -173,7 +173,7 @@ func huqsvarnaAuthenticate(keys HusqvarnaKeys) (AuthResponse, error) {
 	var authData AuthResponse
 	err = json.Unmarshal(body, &authData)
 	if err != nil {
-		log.Fatal(err)
+		return AuthResponse{}, err
 	}
 
 	return authData, nil
@@ -197,13 +197,11 @@ func Authenticate(keys HusqvarnaKeys) AuthResponse {
 			log.Fatal(err) // crash here for now. We can handle this more gracefully later
 		}
 		lastAuthTime = time.Now()
-
 	} else {
-		log.Println("Reusing token, last Authenticated at", time.Since(lastAuthTime).Seconds(), " expire in ", authData.ExpiresIn-300, "seconds")
+		log.Printf("Reusing token, last authenticated %.0fs ago, expires in %ds", time.Since(lastAuthTime).Seconds(), authData.ExpiresIn-300)
 	}
 
 	return authData
-
 }
 
 func getMowerStatus(husqsKeys HusqvarnaKeys) (MowersResponse, error) {

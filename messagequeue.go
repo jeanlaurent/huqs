@@ -35,19 +35,6 @@ func (mq *MessageQueue) AddMessage(data string) {
 	}
 }
 
-func (mq *MessageQueue) GetMessage() *Message {
-	mq.lock.Lock()
-	defer mq.lock.Unlock()
-
-	if mq.messages.Len() > 0 {
-		front := mq.messages.Front()
-		if msg, ok := front.Value.(Message); ok {
-			return &msg
-		}
-	}
-	return nil
-}
-
 func (mq *MessageQueue) GetLast100Messages() []*Message {
 	mq.lock.Lock()
 	defer mq.lock.Unlock()
